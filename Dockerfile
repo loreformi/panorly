@@ -3,11 +3,13 @@ FROM php:8.2-fpm-alpine AS base
 RUN apk add --no-cache \
     nginx \
     sqlite \
+    sqlite-dev \
     supervisor \
     nodejs \
     npm \
     git \
     unzip \
+    $PHPIZE_DEPS \
     && docker-php-ext-install pdo pdo_sqlite
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
