@@ -1,4 +1,4 @@
-FROM php:8.2-fpm-alpine AS base
+FROM php:8.2-fpm-alpine AS build
 
 RUN apk add --no-cache \
     nginx \
@@ -10,26 +10,44 @@ RUN apk add --no-cache \
     git \
     unzip \
     $PHPIZE_DEPS \
-    && docker-php-ext-install pdo pdo_sqlite
+    && docker-php-ext-install pdo_sqlite
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-COPY composer.json composer.lock* ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist || true
+COPY composer.json ./
+RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --no-scripts
 
-COPY package.json package-lock.json* ./
-RUN npm install || true
+COPY package.json ./
+RUN npm install --no-audit --no-fund
 
 COPY . .
 
-RUN composer dump-autoload --optimize || true
-RUN npm run build || true
+RUN composer dump-autoload --optimize --no-interaction \
+    && npm run build
 
-RUN mkdir -p /config/database /config/storage/app/public/backgrounds \
+FROM php:8.2-fpm-alpine AS runtime
+
+RUN apk add --no-cache nginx sqlite supervisor
+
+WORKDIR /app
+
+COPY --from=build /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=build /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
+COPY --from=build /app /app
+COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+COPY docker/supervisord.conf /etc/supervisord.conf
+COPY docker/entrypoint.sh /usr/local/bin/panorly-entrypoint
+
+RUN chmod +x /usr/local/bin/panorly-entrypoint \
+    && mkdir -p /config/database /config/storage/app/public/backgrounds \
+        /app/storage/framework/cache /app/storage/framework/sessions \
+        /app/storage/framework/views /app/storage/logs \
+    && touch /config/database/panorly.sqlite \
+    && ln -sfn /config/storage /app/storage/app/public \
     && chown -R www-data:www-data /app /config
 
 EXPOSE 80
 
-CMD ["sh", "-c", "php artisan migrate --force && supervisord -c /app/docker/supervisord.conf"]
+ENTRYPOINT ["/usr/local/bin/panorly-entrypoint"]
