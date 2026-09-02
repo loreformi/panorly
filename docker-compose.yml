@@ -1,0 +1,15 @@
+services:
+  panorly:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: panorly
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Rome
+    volumes:
+      - ./panorly-config:/config
+    ports:
+      - "8080:80"
+    restart: unless-stopped
