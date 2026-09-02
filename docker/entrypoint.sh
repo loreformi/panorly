@@ -11,7 +11,6 @@ if [ -z "${APP_KEY:-}" ]; then
   exit 1
 fi
 
-php artisan storage:link --force || true
 php artisan migrate --force
 
 exec /usr/bin/supervisord -c /etc/supervisord.conf

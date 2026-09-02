@@ -1,10 +1,7 @@
-FROM php:8.2-fpm-alpine AS build
+FROM php:8.3-fpm-alpine AS build
 
 RUN apk add --no-cache \
-    nginx \
-    sqlite \
     sqlite-dev \
-    supervisor \
     nodejs \
     npm \
     git \
@@ -27,7 +24,7 @@ COPY . .
 RUN composer dump-autoload --optimize --no-interaction \
     && npm run build
 
-FROM php:8.2-fpm-alpine AS runtime
+FROM php:8.3-fpm-alpine AS runtime
 
 RUN apk add --no-cache nginx sqlite supervisor
 
@@ -45,7 +42,6 @@ RUN chmod +x /usr/local/bin/panorly-entrypoint \
         /app/storage/framework/cache /app/storage/framework/sessions \
         /app/storage/framework/views /app/storage/logs \
     && touch /config/database/panorly.sqlite \
-    && ln -sfn /config/storage /app/storage/app/public \
     && chown -R www-data:www-data /app /config
 
 EXPOSE 80

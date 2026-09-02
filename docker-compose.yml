@@ -5,9 +5,18 @@ services:
       dockerfile: Dockerfile
     container_name: panorly
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Rome
+      APP_NAME: Panorly
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:?APP_KEY is required}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /config/database/panorly.sqlite
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      FILESYSTEM_DISK: public
+      PANORLY_ALLOW_REGISTRATION: ${PANORLY_ALLOW_REGISTRATION:-true}
+      PANORLY_DEFAULT_THEME: ${PANORLY_DEFAULT_THEME:-midnight}
     volumes:
       - ./panorly-config:/config
     ports:
