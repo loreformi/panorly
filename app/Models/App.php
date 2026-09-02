@@ -10,7 +10,16 @@ class App extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'title', 'url', 'icon', 'color', 'sort_order'];
+    protected $fillable = [
+        'user_id', 'title', 'description', 'url', 'icon', 'icon_type', 'icon_path',
+        'color', 'gradient_from', 'gradient_to', 'size', 'open_in_new_tab',
+        'is_visible', 'sort_order',
+    ];
+
+    protected $casts = [
+        'open_in_new_tab' => 'boolean',
+        'is_visible' => 'boolean',
+    ];
 
     public function user(): BelongsTo
     {

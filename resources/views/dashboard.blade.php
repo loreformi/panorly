@@ -1,52 +1,26 @@
 @extends('layouts.app')
-
 @section('content')
-<div class="max-w-6xl mx-auto">
-    <div class="flex items-center justify-between mb-6">
-        <input type="text" placeholder="Search your apps..." class="panorly-input w-full max-w-md" id="panorly-search">
-        <button class="panorly-btn ml-4" onclick="document.getElementById('add-app-modal').classList.remove('hidden')">+ Add app</button>
-    </div>
-
-    <div class="panorly-grid" data-panorly-sortable>
-        @forelse($apps as $app)
-            <a href="{{ $app->url }}" target="_blank" rel="noopener"
-               data-app-id="{{ $app->id }}"
-               class="panorly-card p-5 flex flex-col items-center gap-3 text-center panorly-app-item"
-               data-search="{{ strtolower($app->title) }}">
-                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold"
-                     style="background-color: {{ $app->color ?? 'var(--panorly-accent)' }}">
-                    {{ strtoupper(substr($app->title, 0, 1)) }}
-                </div>
-                <span class="text-sm font-medium">{{ $app->title }}</span>
-            </a>
-        @empty
-            <p class="opacity-60 col-span-full text-center py-12">No apps yet. Add your first one.</p>
-        @endforelse
-    </div>
-
-    <div id="add-app-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="panorly-card w-full max-w-sm p-6">
-            <h2 class="text-lg font-semibold mb-4">Add a new app</h2>
-            <form method="POST" action="{{ route('apps.store') }}" class="space-y-3">
-                @csrf
-                <input type="text" name="title" placeholder="Name" required class="panorly-input w-full">
-                <input type="url" name="url" placeholder="https://" required class="panorly-input w-full">
-                <input type="color" name="color" class="w-full h-10 rounded">
-                <div class="flex gap-2 pt-2">
-                    <button type="submit" class="panorly-btn flex-1">Add</button>
-                    <button type="button" class="flex-1 opacity-70" onclick="document.getElementById('add-app-modal').classList.add('hidden')">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
+<div x-data="dashboardEditor()">
+<div class="panorly-toolbar"><input id="panorly-search" class="panorly-input panorly-search" placeholder="Search apps…" @input="filter($event.target.value)"><div class="panorly-toolbar-actions"><button class="panorly-btn panorly-btn-secondary" @click="editing=!editing;toggleEditing()" x-text="editing ? 'Done editing' : 'Edit dashboard'"></button><button class="panorly-btn" @click="openCreate()">+ Add app</button></div></div>
+<div x-show="editing" x-cloak class="panorly-card edit-banner"><span>Drag cards to reorder them. Open a card menu to edit, duplicate, or remove it.</span><button class="panorly-btn panorly-btn-secondary" @click="editing=false;toggleEditing()">Done</button></div>
+<div class="panorly-grid" data-panorly-sortable :data-editing="editing ? 'true' : ''">
+@forelse($apps->where('is_visible', true) as $app)
+<article data-app-id="{{ $app->id }}" class="panorly-card app-tile size-{{ $app->size ?? 'medium' }}" :class="editing ? 'editing' : ''" data-search="{{ strtolower($app->title.' '.$app->description) }}">
+<a href="{{ $app->url }}" :target="editing ? '_self' : '{{ $app->open_in_new_tab ? '_blank' : '_self' }}'" rel="noopener" class="app-tile-head" style="text-decoration:none;color:inherit;height:100%"><div><div class="app-icon {{ $app->icon_type !== 'initial' ? 'app-icon-image' : '' }}" style="@if($app->icon_type==='initial') background:{{ $app->gradient_from && $app->gradient_to ? 'linear-gradient(135deg, '.$app->gradient_from.', '.$app->gradient_to.')' : ($app->color ?? 'var(--panorly-accent)') }} @endif">@if(in_array($app->icon_type,['upload','url']) && $app->icon_path)<img src="{{ $app->icon_type==='upload' ? Storage::url($app->icon_path) : $app->icon_path }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">@else{{ strtoupper(substr($app->title,0,1)) }}@endif</div></div><div style="margin-top:auto"><div class="app-title">{{ $app->title }}</div>@if($app->description)<p class="app-description">{{ $app->description }}</p>@endif</div></a>
+<div x-show="editing" style="position:absolute;right:11px;top:11px" x-data="{menu:false}"><button class="app-kebab" @click.stop="menu=!menu">•••</button><div class="app-menu" x-show="menu" @click.outside="menu=false" x-cloak><button @click="openEdit({{ $app->toJson() }})">Edit app</button><form method="POST" action="{{ route('apps.duplicate',$app) }}">@csrf<button type="submit">Duplicate</button></form><form method="POST" action="{{ route('apps.destroy',$app) }}" onsubmit="return confirm('Remove {{ addslashes($app->title) }}?')">@csrf @method('DELETE')<button type="submit" style="color:#fca5a5">Remove</button></form></div></div>
+</article>
+@empty
+<div class="panorly-card empty-state"><div><div class="empty-icon">+</div><h2 style="font-size:20px;margin:0 0 7px">Your space, your way</h2><p class="panorly-muted" style="margin:0 0 18px">Add the apps and services you use every day.</p><button class="panorly-btn" @click="openCreate()">Add your first app</button></div></div>
+@endforelse
 </div>
-
-<script>
-document.getElementById('panorly-search')?.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
-    document.querySelectorAll('.panorly-app-item').forEach((el) => {
-        el.style.display = el.dataset.search.includes(q) ? '' : 'none';
-    });
-});
-</script>
+<div class="panorly-overlay" x-show="drawer" x-cloak @keydown.escape.window="drawer=false"><aside class="panorly-drawer" @click.outside="drawer=false"><div class="drawer-head"><div><div class="drawer-title" x-text="form.id?'Edit app':'Add app'"></div><div class="panorly-muted" style="font-size:13px;margin-top:4px">Make every card yours.</div></div><button class="drawer-close" @click="drawer=false">×</button></div><form :action="form.id ? '/apps/'+form.id : '/apps'" method="POST" enctype="multipart/form-data">@csrf <template x-if="form.id"><input type="hidden" name="_method" value="PUT"></template>
+<div class="form-group"><label class="form-label">Name</label><input class="panorly-input" name="title" x-model="form.title" required placeholder="e.g. Home Assistant"></div>
+<div class="form-group"><label class="form-label">URL</label><input class="panorly-input" type="url" name="url" x-model="form.url" required placeholder="https://"></div>
+<div class="form-group"><label class="form-label">Description <span class="panorly-muted">optional</span></label><textarea class="panorly-input" rows="2" name="description" x-model="form.description" placeholder="A short description"></textarea></div>
+<div class="form-group"><label class="form-label">Icon</label><div class="icon-choice"><label><input type="radio" value="initial" name="icon_type" x-model="form.icon_type"> Initial</label><label><input type="radio" value="upload" name="icon_type" x-model="form.icon_type"> Upload</label><label><input type="radio" value="url" name="icon_type" x-model="form.icon_type"> Image URL</label></div><input x-show="form.icon_type==='upload'" class="panorly-input" style="margin-top:10px" type="file" name="icon_file" accept=".png,.jpg,.jpeg,.webp,.svg"><input x-show="form.icon_type==='url'" class="panorly-input" style="margin-top:10px" type="url" name="icon_url" x-model="form.icon_url" placeholder="https://example.com/icon.png"></div>
+<div class="form-group"><label class="form-label">Card size</label><div class="size-choice"><template x-for="s in ['small','medium','wide','large']"><label><input type="radio" name="size" :value="s" x-model="form.size"><span x-text="s"></span></label></template></div></div>
+<div class="form-grid"><div class="form-group"><label class="form-label">Base color</label><input style="height:44px" class="panorly-input" type="color" name="color" x-model="form.color"></div><div class="form-group"><label class="form-label">Gradient from</label><input style="height:44px" class="panorly-input" type="color" name="gradient_from" x-model="form.gradient_from"></div></div><div class="form-group"><label class="form-label">Gradient to</label><input style="height:44px" class="panorly-input" type="color" name="gradient_to" x-model="form.gradient_to"></div>
+<label style="display:flex;gap:9px;align-items:center;font-size:13px;margin:0 0 20px"><input type="checkbox" name="open_in_new_tab" value="1" x-model="form.open_in_new_tab"> Open in a new tab</label>
+<div style="display:flex;gap:10px"><button type="button" class="panorly-btn panorly-btn-secondary" style="flex:1" @click="drawer=false">Cancel</button><button class="panorly-btn" style="flex:1" x-text="form.id?'Save changes':'Add app'"></button></div></form></aside></div></div>
+<script>function dashboardEditor(){return{drawer:false,editing:false,form:{},blank(){return{id:null,title:'',url:'',description:'',icon_type:'initial',icon_url:'',size:'medium',color:'#7c5cff',gradient_from:'#7c5cff',gradient_to:'#38bdf8',open_in_new_tab:true}},openCreate(){this.form=this.blank();this.drawer=true},openEdit(app){this.form={...this.blank(),...app,icon_url:app.icon_type==='url'?app.icon_path:''};this.drawer=true},filter(q){q=q.toLowerCase();document.querySelectorAll('[data-search]').forEach(x=>x.style.display=x.dataset.search.includes(q)?'':'none')},toggleEditing(){setTimeout(()=>{const g=document.querySelector('[data-panorly-sortable]');if(g){g.dataset.editing=this.editing?'true':'';location.reload()}},0)}}}</script>
 @endsection
