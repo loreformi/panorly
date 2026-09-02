@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -16,6 +17,13 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+    Route::prefix('apps')->name('apps.')->group(function () {
+        Route::post('/', [AppController::class, 'store'])->name('store');
+        Route::put('/{app}', [AppController::class, 'update'])->name('update');
+        Route::delete('/{app}', [AppController::class, 'destroy'])->name('destroy');
+        Route::post('/reorder', [AppController::class, 'reorder'])->name('reorder');
+    });
 
     Route::prefix('settings/theme')->name('theme.')->group(function () {
         Route::get('/', [ThemeController::class, 'edit'])->name('edit');

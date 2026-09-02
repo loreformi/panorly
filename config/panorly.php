@@ -3,8 +3,10 @@
 return [
     'name' => env('APP_NAME', 'Panorly'),
 
+    'allow_registration' => env('PANORLY_ALLOW_REGISTRATION', true),
+
     'themes' => [
-        'default' => 'midnight',
+        'default' => env('PANORLY_DEFAULT_THEME', 'midnight'),
         'presets' => ['midnight', 'daylight', 'forest', 'sunset'],
         'allow_custom' => true,
     ],
