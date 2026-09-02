@@ -21,7 +21,9 @@ RUN npm install --no-audit --no-fund
 
 COPY . .
 
-RUN composer dump-autoload --optimize --no-interaction \
+RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \
+    && chmod -R ug+rwX bootstrap/cache storage \
+    && composer dump-autoload --optimize --no-interaction \
     && npm run build
 
 FROM php:8.3-fpm-alpine AS runtime
@@ -39,10 +41,10 @@ COPY docker/entrypoint.sh /usr/local/bin/panorly-entrypoint
 
 RUN chmod +x /usr/local/bin/panorly-entrypoint \
     && mkdir -p /config/database /config/storage/app/public/backgrounds \
-        /app/storage/framework/cache /app/storage/framework/sessions \
+        /app/bootstrap/cache /app/storage/framework/cache /app/storage/framework/sessions \
         /app/storage/framework/views /app/storage/logs \
-    && touch /config/database/panorly.sqlite \
-    && chown -R www-data:www-data /app /config
+    && chown -R www-data:www-data /app /config \
+    && chmod -R ug+rwX /app/bootstrap/cache /app/storage /config
 
 EXPOSE 80
 
