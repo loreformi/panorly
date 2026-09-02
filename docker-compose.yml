@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: panorly
+    user: root
     environment:
       APP_NAME: Panorly
       APP_ENV: production
